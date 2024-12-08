@@ -19,6 +19,8 @@ jobs:
       - group: DotNetPrivateBuildAccess
       - group: Azure Blob variable group
       - group: ReleasePipelineSecrets
+      - group: mscodehub-feed-read-general
+      - group: mscodehub-feed-read-akv
 
     pool:
       name: PowerShell1ES
@@ -35,6 +37,10 @@ jobs:
         CreateJson: yes
         UseJson: no
 
+    - template: ../insert-nuget-config-azfeed.yml
+      parameters:
+        repoRoot: '$(Build.SourcesDirectory)'
+
     - pwsh: |
         Import-Module .\build.psm1 -force
         Start-PSBootstrap
@@ -42,7 +48,6 @@ jobs:
       retryCountOnTaskFailure: 2
       displayName: 'Bootstrap'
       env:
-        __DOTNET_RUNTIME_FEED: $(RUNTIME_SOURCEFEED)
         __DOTNET_RUNTIME_FEED_KEY: $(RUNTIME_SOURCEFEED_KEY)
 
     - pwsh: |
@@ -93,7 +98,7 @@ jobs:
       displayName: 'Build PowerShell Source'
 
     - pwsh: |
-        Get-ChildItem -Path env:
+        Get-ChildItem -Path env: | Out-String -width 9999 -Stream | write-Verbose -Verbose
       displayName: Capture Environment
       condition: succeededOrFailed()
 
@@ -142,9 +147,8 @@ jobs:
         verbosityLevel: standard
         # write a status update every 5 minutes.  Default is 1 minute
         statusUpdateInterval: '00:05:00'
-        surrogateConfigurationFolder : $(surrogateFilePath)
       env:
-        AzureServicesAuthConnectionString: RunAs=App;AppId=$(APIScanClient);TenantId=$(APIScanTenant);AppKey=$(APIScanSecret)
+        AzureServicesAuthConnectionString: RunAs=App
 
     - task: securedevelopmentteam.vss-secure-development-tools.build-task-report.SdtReport@2
       continueOnError: true
@@ -164,7 +168,7 @@ jobs:
         GdnPublishTsaConfigFile: '$(Build.SourcesDirectory)\tools\guardian\tsaconfig-APIScan.json'
 
     - pwsh: |
-        Get-ChildItem -Path env:
+        Get-ChildItem -Path env: | Out-String -width 9999 -Stream | write-Verbose -Verbose
       displayName: Capture Environment
       condition: succeededOrFailed()
 
